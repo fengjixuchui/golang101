@@ -21,7 +21,7 @@ Go 1.18 enhances the expressiveness of interface types by supporting several new
 
 ## Enhanced interface syntax
 
-Some new notations are introduced into Go to make it is possible to use interface types as constraints.
+Some new notations are introduced into Go to make it possible to use interface types as constraints.
 
 * The `~T` form, where `T` is a type literal or type name.
   `T` must denote a non-interface type whose underlying type is itself
@@ -31,7 +31,7 @@ Some new notations are introduced into Go to make it is possible to use interfac
   The `~T` form is called a tilde form or type tilde in this book
   (or underlying term and approximation type elsewhere).
 * The `T1 | T2 | ... | Tn` form, which is called a union of terms (or type/term union in this book).
-  Each `Tx` term is a tilde form, type literal, or type name,
+  Each `Tx` term must be a tilde form, a type literal, or a type name,
   and it may not denote a type parameter.
   There are some requirements for union terms.
   These requirements will be described in a section below.
@@ -105,7 +105,7 @@ type O interface {
 }
 ```
 
-Embedding an interface type in another one is equivalent to (recursively) expanding the elements in the former into the latter. In the above example, the declarations of `M`, `N` and `O` are equivalent to the following ones:
+Embedding an interface type in another one is equivalent to (recursively) expanding the elements of the former into the latter. In the above example, the declarations of `M`, `N` and `O` are equivalent to the following ones:
 
 ```Go
 type M interface {
@@ -137,7 +137,7 @@ type O interface {
 ```
 
 We could view a single type literal, type name or tilde form as a term union with only one term.
-So simply speaking, since Go 118, an interface type may specify some methods and embed some term unions.
+So simply speaking, since Go 1.18, an interface type may specify some methods and embed some term unions.
 
 An interface type without any embedding elements is called an empty interface.
 For example, the predeclared `any` type alias denotes an empty interface type.
@@ -148,22 +148,22 @@ Before Go 1.18, an interface type is defined as a method set.
 Since Go 1.18, an interface type is defined as a type set.
 A type set only consists of non-interface types.
 
+In fact, every type term defines a method set.
+Calculations of type sets follow the following rules:
+
 * The type set of a non-interface type literal or type name only contains the type denoted by the type literal or type name.
 * As just mentioned above, the type set of a tilde form `~T` is the set of types whose underlying types are `T`. In theory, this is an infinite set.
 * The type set of a method specification is the set of non-interface types whose method sets include the method specification.
   In theory, this is an infinite set.
-* The type set of an empty interface is the set of all non-interface types.
+* The type set of an empty interface (such as the predeclared `any`) is the set of all non-interface types.
   In theory, this is an infinite set.
 * The type set of a union of terms `T1 | T2 | ... | Tn` is the union of the type sets of the terms.
 * The type set of a non-empty interface is the intersection of the type sets of its interface elements.
 
-As the type set of an empty interface type (for example, the predeclared `any`) contains all non-interface types.
-
-By the current specification,
-two unnamed constraints are equivalent to each other if their type sets are equal.
+By the current specification, two unnamed constraints are equivalent to each other if their type sets are equal.
 
 Given the types declared in the following code snippet,
-for each interface type, its type set is shown in its preceding comment.
+the type set of each interface type is described in the preceding comment of that interface type.
 
 ```Go
 type Bytes []byte  // underlying type is []byte
@@ -206,16 +206,16 @@ type V interface {[]byte; any}
 type W interface {T; U}
 
 // Z <=> any. Z is a blank interface. Its
-// type set contains all interface types.
+// type set contains all non-interface types.
 type Z interface {~[]byte | ~string | any}
 ```
 
-Please note that interface elements are separated with semicolon (`;`),
+Please note, interface elements are separated with semicolon (`;`),
 either explicitly or implicitly (Go compilers will
-[insert some missing semicolons as needed in compilations](https://go101.org/article/line-break-rules.html)).
-The following interface type literals are equivalent to each other.
-The type set of the interface type denoted by them is empty.
-The interface type and the underlying type of the type `S`
+[insert some missing semicolons as needed during compilations](https://go101.org/article/line-break-rules.html)).
+The following interface type literals are equivalent to each other,
+they all denote an unnamed interface type which type set is empty.
+The denoted unnamed interface type and the underlying type of the type `S`
 shown in the above code snippet are actually identical.
 
 ```Go
@@ -228,28 +228,29 @@ interface {
 }
 ```
 
-If the type set of a type `X` is a subset of an interface type `Y`,
-we say `X` implements (or satisfies) `Y`.
+If the type set of a type `X` is a subset of an interface type `Y`, we say `X` implements `Y`.
 Here, `X` may be an interface type or a non-interface type.
 
 Because the type set of an empty interface type is a super set of the type sets of any types,
 all types implement an empty interface type.
+On the other hand, because an empty type set is a subset of any type sets,
+an empty-type-set interface type implements any interface types.
 
-In the above example,
+Take the types declared above as an example,
 
 * the interface type `S`, whose type set is empty, implements all interface types.
 * all types implement the interface type `Z`, which is actually a blank interface type.
 
-The list of methods specified by an interface type is called the method set of the interface type.
+The list of the methods specified by an interface type is called the method set of the interface type.
 If an interface type `X` implements another interface type `Y`, then the method set of `X` must be a super set of `Y`.
 
 Interface types whose type sets can be defined entirely by a method set (may be empty)
 are called basic interface types.
 Before 1.18, Go only supports basic interface types.
 Basic interfaces may be used as either value types or type constraints,
-but non-basic interfaces may only be used as type constraints (as of Go 1.18).
+but non-basic interfaces may only be used as type constraints (as of Go 1.19).
 
-In the above examples, `L`, `M`, `U`, `Z` and `any` are basic types.
+Take the types declared above as an example,, `L`, `M`, `U`, `Z` and `any` are basic types.
 
 In the following code, the declaration lines for `x` and `y` both compile okay,
 but the line declaring `z` fails to compile.
@@ -262,16 +263,28 @@ var y interface {M()}
 var z interface {~[]byte}
 ```
 
-Whether or not supporting non-basic interface types as value types in future Go versions in unclear now.
+Whether or not to support non-basic interface types as value types in future Go versions in unclear now.
+
+Note, before Go toolchain 1.19, aliases to non-basic interface types were not supported.
+The following type alias declarations [are only legal since Go toolchain 1.19](https://github.com/golang/go/issues/51616).
+
+```Go
+type C[T any] interface{~int; M() T}
+type C1 = C[bool]
+type C2 = comparable
+type C3 = interface {~[]byte | ~string}
+```
 
 ## More about the predeclared `comparable` constraint
 
-As aforementioned, besides `any`, Go 1.18 introduces another new predeclared identifier `comparable`,
-which denotes an interface type that is implemented by all comparable types.
+As aforementioned, besides `any`, Go 1.18 also introduced another new predeclared identifier `comparable`,
+which denotes an interface type whose method set is composed of all comparable (non-interfaace) types.
 
 The `comparable` interface type could be embedded in other interface types
 to filter out incomparable types from their type sets.
-For example, the type set of the following declared constraint `C` contains only one type: `string`, because the other three types in the union are all [incomprarable types](https://go101.org/article/type-system-overview.html#types-not-support-comparison).
+For example, the type set of the following declared constraint `C` contains only one type: `string`,
+because the other three types in the union are all
+[incomprarable](https://go101.org/article/type-system-overview.html#types-not-support-comparison).
 
 ```Go
 type C interface {
@@ -280,7 +293,7 @@ type C interface {
 }
 ```
 
-Currently (Go 1.18), the `comparable` interface is treated as a non-basic interface type.
+Currently (Go 1.19), the `comparable` interface is treated as a non-basic interface type.
 So, now, it may only be used as type parameter constraints, not as value types.
 The following code is illegal:
 
@@ -288,59 +301,15 @@ The following code is illegal:
 var x comparable = 123
 ```
 
-The type set of the `comparable` interface is the set of all comparable types.
-The set is a subset of the type set of the `any` interface,
+The type set of the `comparable` interface is obviously a subset of the type set of the `any` interface,
 so `comparable` undoubtedly implements `any`, and not vice versa.
-
-On the other hand, starting from Go 1.0, all basic interface types are treated as comparable types.
-The blank interface type `any` is not an exception.
-So it looks that `any` (as a value type) should satisfy (implement) the `comparable` constraint.
-This is quite odd.
-
-After deliberation, Go core team believe that
-[it is a design flaw](https://github.com/golang/go/issues/50646#issuecomment-1023706545)
-to treat all interface types as comparable types and it is a pity that
-the `comparable` type has not been supported since Go 1.0 to avoid this flaw.
-
-Go core team try to make up for this flaw in Go custom generics age.
-So they decided that all basic interface types don't satisfy (implement) the `comparable` constraint.
-A consequence of this decision is [it causes diffculties to some code designs](https://github.com/golang/go/issues/51257).
-
-To avoid the consequence, a proposal has been made to
-[permit using `comparable` as value types](https://github.com/golang/go/issues/51338).
-Whether or not it should be accepted is still under discuss.
-It could be accepted in as earlier as Go 1.19.
-
-Another benefit brought by the proposal is that it provides a way to
-ensure some interface comparisons will never panic.
-For example, calls to the following function might panic at run time:
-
-```Go
-func foo(x, y any) bool {
-	return x == y
-}
-
-var _ = foo([]int{}, []int{}) // panics
-```
-
-If the `comparable` type could be used as a value type,
-then we could change the parameter types of the `foo` function
-to `comparable` to ensure the calls to the `foo` function will never panic.
-
-```Go
-func foo(x, y comparable) bool {
-	return x == y
-}
-
-var _ = foo([]int{}, []int{}) // fails to compile
-```
 
 ## More requirements for union terms
 
 The above has mentioned that a union term may not be a type parameter. There are two other requirements for union terms.
 
 The first is an implementation specific requirement: a term union with more than one term cannot contain the predeclared identifier `comparable` or interfaces that have methods. 
-For example, the following term unions are both illegal (as of Go toolchain 1.18):
+For example, the following term unions are both illegal (as of Go toolchain 1.19):
 
 ```Go
 []byte | comparable
@@ -350,7 +319,7 @@ string | error
 To make descriptions simple, this book will view the predeclared `comparable` interface type
 as an interface type having a method (but not view it as a basic interface type).
 
-Another requirement (restriction) is that the type sets of all non-interface type terms in a term union must have no intersections. For example, in the following code snippet, the term unions in the first two declaration fails to compile, but the last two compile okay.
+Another requirement (restriction) is that the type sets of all non-interface type terms in a term union must have no intersections. For example, in the following code snippet, the term unions in the first declaration fails to compile, but the last two compile okay.
 
 ```Go
 type _ interface {
@@ -366,10 +335,9 @@ type _ interface {
 }
 ```
 
-The four term unions in the above code snippet are equivalent to each other in logic,
+The three term unions in the above code snippet are equivalent to each other in logic,
 which means this restriction is not very reasonable.
-So it might be removed in later Go versions
-(or as earlier as 1.18.x), or become stricter to defeat the workaround.
+So it might be removed in later Go versions, or become stricter to defeat the workaround.
 
 <!--
 https://github.com/golang/go/issues/51607
@@ -457,7 +425,7 @@ of a generic type specification declares a single type parameter
 which constraint presents in simplified form and starts with `*` or `(`.
 
 <!--
-Either the spec is not accurate or the implementation is still not perfect yet.
+Either the spec is not accurate or the implementaiton is still not perfect yet.
 
 type bar[T **string] struct{} // *string (type) is not an expression
 -->
@@ -518,11 +486,15 @@ The following is another case which might cause parsing ambiguity.
 type C5[T *int|bool] struct{}
 ```
 
-As of Go toolchain 1.18, inserting a comma after the presumed constraint `*int|bool` doesn't work
-(It is [a bug](https://github.com/golang/go/issues/51488)
-in Go toolchain 1.18 and will be fixed in Go toolchain 1.19).
+We should insert a comma after the presumed constraint `*int|bool` to remove the ambiguity.
 
-Now, we could use full constraint form or exchange the places of `*int` and `bool` to make it compile okay.
+```Go
+type C5[T *int|bool, ] struct{} // compiles okay
+```
+
+(Note: this way doesn't work with Go toolchain 1.18. It was [a bug](https://github.com/golang/go/issues/51488) and has been fixed since Go toolchain 1.19.)
+
+We could also use full constraint form or exchange the places of `*int` and `bool` to make it compile okay.
 
 ```Go
 // Assume int and bool are predeclared types.
@@ -565,7 +537,7 @@ Two different type parameters are never identical.
 The type of a type parameter is a constraint, a.k.a an interface type.
 This means the underlying type of a type parameter type should be an interface type.
 However, this doesn't mean a type parameter behaves like an interface type.
-Its values may not box non-interface values and be type asserted (as of Go 1.18).
+Its values may not box non-interface values and be type asserted (as of Go 1.19).
 In fact, it is almost totally meaningless to talk about underlying types of type parameters.
 We just need to know that the underlying type of a type parameter is not itself.
 And we ought to think that two type parameters never share an identical underlying type,
@@ -597,9 +569,48 @@ type Cy[T int] interface {
 }
 ```
 
-In fact, currently (Go 1.18), [type parameters may not be embedded in struct types](888-the-status-quo-of-Go-custom-generics.md#embed-type-parameter), too.
+In fact, currently (Go 1.19), [type parameters may not be embedded in struct types](888-the-status-quo-of-Go-custom-generics.md#embed-type-parameter), too.
 
-## Composite type literals (unnamed types) containing type parameters are ordinary types
+{#type-parameter-scope}
+## The scopes of a type parameters
+
+Go specification says:
+
+* The scope of an identifier denoting a type parameter of a function or declared by a method receiver begins after the name of the function and ends at the end of the function body.
+* The scope of an identifier denoting a type parameter of a type begins after the name of the type and ends at the end of the specification of the type.
+
+So the following type declaration is valid, even if the use of type parameter `E` is ahead of its declaration.
+The type parameter `E` is used in the constraint of the type parameter `S`,
+
+```Go
+type G[S ~[]E, E int] struct{}
+```
+
+Please note,
+
+* as mentioned in the last section, although `E` is a type parameter type, `[]E` is an ordinary (slice) type.
+* the underlying type of `S` is `interface{~[]E}`, not `[]E`.
+* the underlying type of `E` is `interface{int}`, not `int`.
+
+By Go specification, the function and method declarations in the following code all fail to compile.
+
+```Go
+type C any
+func foo1[C C]() {}    // error: C redeclared
+func foo2[T C](T T) {} // error: T redeclared
+
+type G[G any] struct{x G} // okay
+func (E G[E]) Bar1() {}   // error: E redeclared
+```
+
+The following `Bar2` method declaration should compile okay, but it doesn't now (Go toolchain 1.19). This is [a bug which will be fixed in Go toolchain 1.20](https://github.com/golang/go/issues/51503).
+
+```Go
+type G[G any] struct{x G} // okay
+func (v G[G]) Bar2() {}   // error: G is not a generic type
+```
+
+## Composite type literals (unnamed types) containing type parameters denote ordinary types
 
 For example, `*T` is always an ordinary (pointer) type.
 It is a type literal, so its underlying type is itself, whether or not `T` is a type parameter.
@@ -615,60 +626,6 @@ For the same reason, the following type parameter lists are also legal.
 [T ~string|~int, A ~[2]T, B ~chan T]            // okay
 [T comparable, M ~map[T]int32, F ~func(T) bool] // okay
 ```
-
-{#type-parameter-scope}
-## The scopes of a type parameters
-
-The following type parameter list is valid, even if the use of `E` is ahead of the declaration of `E`.
-The type parameter `E` is used in the constraint of the type parameter `S`,
-
-```Go
-[S ~[]E, E int]
-```
-
-Please note,
-
-* as mentioned in the last section, although `E` is a type parameter type, `[]E` is an ordinary (slice) type.
-* the underlying type of `S` is `interface{~[]E}`, not `[]E`.
-* the underlying type of `E` is `interface{int}`, not `int`.
-
-For ordinary function and method declarations, a (value) parameter/result name
-is allowed to be the same as a parameter/result type name.
-For example, the following function and method declarations are all valid.
-
-```Go
-type C int
-
-func foo(C C) {}
-
-func (C C) Bar() {}
-```
-
-As of Go 1.18, the scope of a type parameter of a generic function or a method of a generic type
-also include the function/method body and value parameter/result lists.
-Simply speaking, type parameters and value parameters/results are all declared in 
-the top block of the function/method body
-(the scope will [be adjusted a little in Go 1.19](https://github.com/golang/go/issues/52038)).
-
-This means the generic function declarations and method declarations for generic types
-in the following code snippet all fail to compile (as of Go 1.18).
-
-```Go
-type C any
-func foo1[C C]() {}    // error: C redeclared
-func foo2[T C](T T) {} // error: T redeclared
-
-type G[G any] struct{x G} // okay
-func (E G[E]) Bar1() {}   // error: E redeclared
-func (v G[G]) Bar2() {}   // error: G is not a generic type
-```
-
-The `Bar2` method declaration might become legal
-[since a future Go version](https://github.com/golang/go/issues/51503).
-
-<!--
-https://github.com/golang/go/issues/51503
--->
 
 ## More about generic type and function declarations
 
